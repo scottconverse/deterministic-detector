@@ -381,7 +381,7 @@
 <section id="inside">
   <div class="wrap">
     <p class="eyebrow">What's inside</p>
-    <h2>Three pieces, one distribution unit.</h2>
+    <h2>Four pieces, one distribution unit.</h2>
     <p class="lede">The plugin ships the hook declaratively — no per-repo settings merges, nothing
     an agent can clobber. Everything a plugin can't ship (dev dependencies, CI wiring) is handled
     by the bundled installer skill, which recons the repo and reports before changing anything.</p>
@@ -411,6 +411,7 @@
 <span class="c-green">recon</span>      env, tests, CI, ruff config
 <span class="c-green">randomize</span>  two runs, two seeds shown
 <span class="c-green">ci-jobs</span>    both informational at first
+<span class="c-green">graph</span>      repo indexed, one real query
 <span class="c-amber">owner</span>      branch-protection recipe → you</pre>
       </div>
       <div class="card">
@@ -521,13 +522,13 @@
           <li><span class="mark">✓</span><span><strong>Pilot completed on this very repository</strong> — installer acceptance, CI jobs on real PR SHAs, and the full weak-test demo: a green suite hid two surviving mutants, the job named them, strengthened tests killed 2/2. Burn-in: five green randomized runs across five distinct seeds.</span></li>
           <li><span class="mark">✓</span><span><strong>Built against live schemas</strong> — the hooks payload, plugin manifest, and mutmut CLI were verified against current docs and a real local trial, not recalled from training data.</span></li>
           <li><span class="mark">✓</span><span><strong>Four silent-failure classes caught and closed</strong> by the project's own make-it-fail-first rule — two before first release, two more found by the pilot itself (including baselines that fail before any mutant is evaluated, which previously read as clean).</span></li>
+          <li><span class="mark">✓</span><span><strong>Code-graph queries (v0.2.0)</strong> — an MCP-served graph (pinned, run via uvx, local SQLite index) answers callers and dependent tests as an enumerable set: validated 21/21 exact against grep ground truth on a 27k-edge index of a real codebase, including a module-alias call that text matching misses.</span></li>
         </ul>
       </div>
       <div class="status-col next">
         <h3>Not yet</h3>
         <ul>
-          <li><span class="mark">→</span><span><strong>Code-graph queries (planned, v1.1)</strong> — blast-radius lookups via an MCP-served code graph; the candidate tool is verified and adopted, integration not yet built.</span></li>
-          <li><span class="mark">→</span><span><strong>Piloted beyond its own walls</strong> — a suite written alongside the harness has no legacy pollution to find; randomization proving itself against an older, larger suite is the next real test.</span></li>
+          <li><span class="mark">→</span><span><strong>Piloted beyond its own walls</strong> — a suite written alongside the harness has no legacy pollution to find; randomization proving itself against an older, larger suite is the next real test, and no live coding unit has exercised the graph queries in anger yet.</span></li>
         </ul>
       </div>
     </div>
@@ -542,6 +543,7 @@
         <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/original-spec.md">original-spec.md</a>
         <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/p0-p1-report-2026-07-22.md">p0-p1-report.md</a>
         <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/pilot-report-2026-07-23.md">pilot-report.md</a>
+        <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/v0.2.0-code-graph-report-2026-07-23.md">code-graph-report.md</a>
       </div>
     </div>
   </div>

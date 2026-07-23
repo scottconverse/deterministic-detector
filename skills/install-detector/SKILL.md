@@ -57,21 +57,35 @@ continue to the next item (do not silently skip, do not fake green).
    record a deliberate promotion decision.
    ```
 
-5. **Optional local mutation lane.** Only offered if the plugin's P0 spike
+5. **Code-graph index.** Build the repo's blast-radius graph:
+   `uvx --from code-review-graph==2.3.7 code-review-graph build` from the repo
+   root, and add `.code-review-graph/` to the repo's `.gitignore` (the index
+   is a local artifact, never committed). Acceptance: run one real query —
+   `code-review-graph query callers_of <a nontrivial function>` — and show
+   its output; an ambiguous-name response resolved via `qualified_name`
+   counts as pass. Traps (verified 2026-07-23): derive dependent tests from
+   `callers_of` filtered to test nodes, NEVER from `tests_for` (it matches
+   names, not calls, and under-reports ~20x); the tool needs a `.git` marker
+   at the repo root; keep the `==2.3.7` pin — re-validate before any bump.
+   Re-index after large changes with `... code-review-graph update`.
+   If `uvx` is unavailable, install uv first (user scope) or skip with an
+   honest note — the rest of the harness does not depend on this step.
+
+6. **Optional local mutation lane.** Only offered if the plugin's P0 spike
    verdict allows a local (native or WSL) lane; otherwise skip and note why.
    If offered: acceptance is a throwaway-branch demo — a deliberately weak
    test shows a surviving mutant reported as ADVISORY, strengthening the test
    clears it, both outputs shown verbatim, branch deleted. If no local lane
    is offered, run the same weak/strong demo through the CI job instead.
 
-6. **Smoke mode** (`/install-detector smoke`). Write a scratch `.py` file
+7. **Smoke mode** (`/install-detector smoke`). Write a scratch `.py` file
    containing a deliberate ruff violation, edit it via the normal tool path,
    confirm the hook's stderr comes back to the agent, then delete the scratch
    file. This is also the prescribed re-check after any Claude Code client
    update — a client change to the hooks payload can silently kill the hook;
    this step is how that gets caught instead of assumed.
 
-7. **Final report.** One line per item:
+8. **Final report.** One line per item:
 
    ```
    item | PASS / FAIL / PARTIAL | verbatim evidence
