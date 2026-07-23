@@ -13,7 +13,19 @@ from pathlib import Path
 
 import pytest
 
-HOOK = Path(__file__).resolve().parents[1] / "hooks" / "ruff_feedback.py"
+def _find_hook() -> Path:
+    # mutmut copies scoped sources into a mutants/ tree and runs the suite
+    # from inside it; hooks/ is only in the real repo root. Walk the
+    # ancestors of both the test file and the cwd until it appears.
+    for anchor in (Path(__file__).resolve().parent, Path.cwd().resolve()):
+        for base in (anchor, *anchor.parents):
+            candidate = base / "hooks" / "ruff_feedback.py"
+            if candidate.exists():
+                return candidate
+    raise FileNotFoundError("hooks/ruff_feedback.py not found from test anchor or cwd")
+
+
+HOOK = _find_hook()
 RUFF = shutil.which("ruff")
 
 VIOLATING_SOURCE = "import os,sys\nx=[1,2 ,3]\n"
