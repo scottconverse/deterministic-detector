@@ -53,12 +53,14 @@ fresh session on 2026-07-22 and is not repeated here.
 Burn-in is complete (5 green, 5 distinct seeds). To make randomized-suite a
 required check on `main`, run as yourself:
 
-    gh api repos/scottconverse/deterministic-detector/branches/main/protection/required_status_checks/contexts -X POST -f "contexts[]=randomized-suite (informational until owner flips it, see header)"
+    gh api repos/scottconverse/deterministic-detector/branches/main/protection -X PUT -f "required_status_checks[strict]=false" -f "required_status_checks[contexts][]=randomized-suite" -F "enforce_admins=false" -F "required_pull_request_reviews=null" -F "restrictions=null"
 
-or via UI: Settings → Branches → protect `main` → require status checks → add
-the randomized-suite check. (Note: the check name includes the parenthetical
-job title; if creating protection for the first time, the UI route is simpler.)
-mutation-report stays permanently informational.
+or via UI: Settings → Branches → add a protection rule for `main` → "Require
+status checks to pass" → add `randomized-suite` (job names were made plain in
+[PR #5](https://github.com/scottconverse/deterministic-detector/pull/5) so the
+context matches exactly). mutation-report stays permanently informational.
+Note: `main` currently has no protection rule at all, so this CREATES one —
+which is why the UI route may be simpler than the API call.
 
 ## Cost note
 
