@@ -21,8 +21,12 @@ order they happen to be written in."
   target repo: `pytest-randomly`, `detect-test-pollution`, and two GitHub
   Actions jobs (a randomized-order test run, and a diff-scoped mutation
   report).
-- A short **instructions.md** covering test discipline and a
-  worktree-per-agent rule.
+- A **code-graph MCP server** (code-review-graph, pinned, run via `uvx` —
+  nothing to install) answering "who calls this function, and which tests
+  depend on it" from a local SQLite index the installer builds per repo.
+  Grounds blast-radius calls in an enumerable answer instead of grep guesses.
+- A short **instructions.md** covering test discipline, the blast-radius
+  query rule, and a worktree-per-agent rule.
 
 ## What it deliberately is NOT
 
