@@ -78,7 +78,14 @@ continue to the next item (do not silently skip, do not fake green).
    clears it, both outputs shown verbatim, branch deleted. If no local lane
    is offered, run the same weak/strong demo through the CI job instead.
 
-7. **Smoke mode** (`/install-detector smoke`). Write a scratch `.py` file
+7. **Smoke mode** (`/install-detector smoke`). Two checks. First, the
+   code-graph MCP server: confirm this session has the plugin's `code-graph`
+   tools (names like `...code-graph...query_graph_tool`). If absent, the
+   likely cause is a cold uvx cache — the first-ever spawn downloads the
+   package and can outrun the MCP client's connection window. Pre-warm it
+   (`uvx --from code-review-graph==2.3.7 code-review-graph --version`), report
+   the server as PENDING-RESTART, and note that the next session start is the
+   real check. Then the hook: write a scratch `.py` file
    containing a deliberate ruff violation, edit it via the normal tool path,
    confirm the hook's stderr comes back to the agent, then delete the scratch
    file. This is also the prescribed re-check after any Claude Code client
