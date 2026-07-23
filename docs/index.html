@@ -312,7 +312,7 @@
 
 <section class="hero" id="top" style="border-top:0">
   <div class="wrap">
-    <span class="kicker"><span class="pulse" aria-hidden="true"></span>Claude Code plugin · v0.1.0 · MIT</span>
+    <span class="kicker"><span class="pulse" aria-hidden="true"></span>Claude Code plugin · v0.2.1 · MIT</span>
     <h1>Checks your coding agent <span class="r">can't</span> talk its way <span class="g">past</span>.</h1>
     <p class="sub">deterministic-detector pairs <strong>same-turn lint feedback</strong> inside the
     agent's session with <strong>test-order randomization and mutation reporting in CI</strong> —
@@ -509,10 +509,11 @@
   <div class="wrap">
     <p class="eyebrow">Project status</p>
     <h2>Early-stage, self-hosted, and says so.</h2>
-    <p class="lede">v0.1.0. The design went through two external audit rounds before any code was
-    written, then the harness was piloted on its own repository — this repo runs its own
-    detectors on every pull request. Every fact below is backed by the evidence reports in the
-    repo, not by claims.</p>
+    <p class="lede">v0.2.1, running on two machines across both install paths. The design went
+    through two external audit rounds before any code was written, the harness was piloted on
+    its own repository — this repo runs its own detectors on every pull request — and its
+    detectors have now been exercised against a real, mature codebase they didn't grow up with.
+    Every fact below is backed by the evidence reports in the repo, not by claims.</p>
 
     <div class="status-grid">
       <div class="status-col done">
@@ -522,13 +523,15 @@
           <li><span class="mark">✓</span><span><strong>Pilot completed on this very repository</strong> — installer acceptance, CI jobs on real PR SHAs, and the full weak-test demo: a green suite hid two surviving mutants, the job named them, strengthened tests killed 2/2. Burn-in: five green randomized runs across five distinct seeds.</span></li>
           <li><span class="mark">✓</span><span><strong>Built against live schemas</strong> — the hooks payload, plugin manifest, and mutmut CLI were verified against current docs and a real local trial, not recalled from training data.</span></li>
           <li><span class="mark">✓</span><span><strong>Four silent-failure classes caught and closed</strong> by the project's own make-it-fail-first rule — two before first release, two more found by the pilot itself (including baselines that fail before any mutant is evaluated, which previously read as clean).</span></li>
-          <li><span class="mark">✓</span><span><strong>Code-graph queries (v0.2.0)</strong> — an MCP-served graph (pinned, run via uvx, local SQLite index) answers callers and dependent tests as an enumerable set: validated 21/21 exact against grep ground truth on a 27k-edge index of a real codebase, including a module-alias call that text matching misses.</span></li>
+          <li><span class="mark">✓</span><span><strong>Code-graph queries (v0.2.0)</strong> — an MCP-served graph (pinned, run via uvx, local SQLite index) answers callers and dependent tests as an enumerable set: validated 21/21 exact against grep ground truth, including a module-alias call that text matching misses. Run against a real, unrelated codebase at scale — a 66,963-edge index built in seconds — leaving that repository's working tree untouched.</span></li>
+          <li><span class="mark">✓</span><span><strong>Exercised beyond its own walls</strong> — the randomizer ran a mature, unrelated 1,983-test suite under three distinct seeds (all green) and the graph answered queries on its real index. The detectors run correctly on a codebase they didn't grow up with; that suite proved order-independent, so nothing pathological surfaced there.</span></li>
         </ul>
       </div>
       <div class="status-col next">
         <h3>Not yet</h3>
         <ul>
-          <li><span class="mark">→</span><span><strong>Piloted beyond its own walls</strong> — a suite written alongside the harness has no legacy pollution to find; randomization proving itself against an older, larger suite is the next real test, and no live coding unit has exercised the graph queries in anger yet.</span></li>
+          <li><span class="mark">→</span><span><strong>An order-dependent failure caught in the wild</strong> — the randomizer catching real pollution is proven only by the pilot's deliberate demo; the one mature outside suite it has met so far was clean, so that catch hasn't happened on code no one planted it in.</span></li>
+          <li><span class="mark">→</span><span><strong>A live coding unit through the whole stack</strong> — the dev-rigor discipline now knows how to consume these detectors, but no real change has yet flowed through plan, build, and gate with the harness feeding it end to end.</span></li>
         </ul>
       </div>
     </div>
