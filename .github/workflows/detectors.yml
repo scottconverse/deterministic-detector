@@ -114,8 +114,17 @@ jobs:
           } >> pyproject.toml
           mutmut run 2>&1 | tee mutmut-run.log || true
           echo "### Surviving mutants" >> "$GITHUB_STEP_SUMMARY"
-          if ! mutmut results 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"; then
+          mutmut results 2>&1 | tee results.log | tee -a "$GITHUB_STEP_SUMMARY" || true
+          if [ ! -s results.log ]; then
             echo "mutmut produced no results — run log tail:" >> "$GITHUB_STEP_SUMMARY"
             tail -20 mutmut-run.log >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # "not checked" means the baseline suite failed and NO mutant was
+          # ever evaluated — an empty-looking survivors list here is a
+          # vacuous pass, not a clean one. Say so loudly.
+          if grep -q "not checked" results.log; then
+            echo "BASELINE FAILED: mutants were NOT evaluated (suite failed before mutation). This run produced NO mutation data — run log tail:" \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+            tail -30 mutmut-run.log >> "$GITHUB_STEP_SUMMARY"
           fi
           exit 0
