@@ -1,0 +1,13 @@
+{
+  "name": "deterministic-detector",
+  "displayName": "Deterministic Detector",
+  "version": "0.1.0",
+  "description": "deterministic detectors for AI-agent development",
+  "author": {
+    "name": "Scott Converse"
+  },
+  "repository": "https://github.com/scottconverse/deterministic-detector",
+  "license": "MIT",
+  "keywords": ["testing", "ruff", "mutation-testing", "pytest-randomly", "ci"],
+  "hooks": "./hooks/hooks.json"
+}

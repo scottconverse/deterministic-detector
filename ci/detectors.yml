@@ -1,0 +1,130 @@
+# deterministic-detector CI template
+#
+# This is a TEMPLATE. It is not run in this repo. The `/install-detector`
+# skill copies and adapts it into a TARGET repo's .github/workflows/ during
+# installation (plan-v1.2.md section 3.3).
+#
+# ---------------------------------------------------------------------------
+# ENFORCEMENT STATUS — READ BEFORE TOUCHING BRANCH PROTECTION
+#
+# randomized-suite: starts INFORMATIONAL. It is flipped to a REQUIRED status
+#   check ONLY by the repo owner, and ONLY after burn-in: five green runs
+#   across different seeds, or one deliberate pollution-hunt pass (whichever
+#   comes first). The pilot suite has never run in random order; a day-one
+#   required check would hold an unrelated PR hostage for latent pollution
+#   this project exists to find. See docs/plan-v1.2.md D9/A5 and the owner
+#   recipe in section 3.5.
+#
+# mutation-report: is PERMANENTLY non-required / informational. It is never
+#   promoted to a required status check without the owner recording a
+#   deliberate decision. Equivalent mutants exist and cannot be killed by any
+#   test; a hard gate on survivor count reds on legitimate code. See
+#   docs/plan-v1.2.md D3.
+#
+# Agents NEVER create, modify, or remove required-status-check / branch
+# protection settings, in either direction. That flip is owner-performed,
+# manually, via the GitHub UI or the `gh api` recipe in plan-v1.2.md 3.5.
+# ---------------------------------------------------------------------------
+
+name: deterministic-detectors
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  randomized-suite:
+    name: randomized-suite (informational until owner flips it, see header)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Adapted by the installer to the target repo's dependency manager
+      # (uv / pip / poetry). This is the pip form; installer swaps as needed.
+      - name: Install project + dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install -r requirements-dev.txt
+          pip install pytest-randomly
+
+      - name: Run full suite under pytest-randomly
+        run: |
+          set -o pipefail
+          pytest -p randomly | tee pytest-output.log
+          echo "### Randomized suite seed" >> "$GITHUB_STEP_SUMMARY"
+          grep -o 'Using --randomly-seed=[0-9]*' pytest-output.log \
+            | tee -a "$GITHUB_STEP_SUMMARY" || true
+
+  mutation-report:
+    name: mutation-report (permanently informational, see header)
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is MANDATORY. Diff-scoping needs the base branch
+      # present locally; a shallow checkout makes the diff come up empty
+      # and this job would pass vacuously (plan-v1.2.md D4 vacuous-pass trap).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project + dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install -r requirements-dev.txt
+          # Version pinned to the mutmut spiked in P0 of plan-v1.2.md.
+          # Native-Windows support does not exist in this version; this job
+          # is the load-bearing lane precisely because it runs on
+          # ubuntu-latest, not a Windows dev box (plan-v1.2.md D4).
+          pip install "mutmut==3.6.0"
+
+      - name: Diff-scope changed non-test .py files vs base branch
+        id: scope
+        run: |
+          git fetch origin "${{ github.event.pull_request.base.ref || 'main' }}" --depth=1
+          BASE="origin/${{ github.event.pull_request.base.ref || 'main' }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- '*.py' \
+            | grep -v -E '(^|/)tests?/' | grep -v -E '(^|/)test_' || true)
+          echo "### Files scoped for mutation" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$CHANGED" ]; then
+            echo "(no non-test .py files changed vs $BASE)" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "$CHANGED" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "$CHANGED" > changed_files.txt
+
+      - name: Run diff-scoped mutmut (always informational)
+        if: ${{ !cancelled() }}
+        run: |
+          if [ ! -s changed_files.txt ]; then
+            echo "Nothing to mutate; skipping mutmut run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Appending a second [tool.mutmut] section would be invalid TOML,
+          # and the || true below would swallow the parse failure into a
+          # silent green with an empty survivor list — the exact vacuous-pass
+          # class this job exists to prevent. Refuse loudly instead.
+          if grep -qE '^\[tool\.mutmut\]' pyproject.toml 2>/dev/null; then
+            echo "SKIPPED: pyproject.toml already has [tool.mutmut]; the installer must merge diff-scoping into the existing section instead of this generated block. This run produced NO mutation data." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "[tool.mutmut]"
+            echo -n "source_paths = ["
+            sed 's/.*/"&",/' changed_files.txt | tr -d '\n'
+            echo "]"
+          } >> pyproject.toml
+          mutmut run 2>&1 | tee mutmut-run.log || true
+          echo "### Surviving mutants" >> "$GITHUB_STEP_SUMMARY"
+          if ! mutmut results 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"; then
+            echo "mutmut produced no results — run log tail:" >> "$GITHUB_STEP_SUMMARY"
+            tail -20 mutmut-run.log >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
