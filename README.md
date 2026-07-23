@@ -58,6 +58,13 @@ Add this plugin to Claude Code, then in the target repo run
 anything. Run `/install-detector smoke` after any Claude Code client update
 to confirm the hook still works.
 
+On a machine that has never run the graph tool, pre-warm the uvx cache once
+before your first session with the plugin — otherwise the code-graph MCP
+server's first spawn includes a package download and can miss the client's
+connection window (one session, self-heals after):
+
+    uvx --from code-review-graph==2.3.7 code-review-graph --version
+
 ## Full design record
 
 See [`docs/plan-v1.2.md`](docs/plan-v1.2.md) for the complete decision
