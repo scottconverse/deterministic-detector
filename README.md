@@ -1,5 +1,7 @@
 # deterministic-detector
 
+**Website: [scottconverse.github.io/deterministic-detector](https://scottconverse.github.io/deterministic-detector/)**
+
 A Claude Code plugin that gives an AI coding agent a few reflexes it doesn't
 reliably have on its own: catching lint/format problems in the same turn,
 running tests in randomized order instead of a fixed order that can hide

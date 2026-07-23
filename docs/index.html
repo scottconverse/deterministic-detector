@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>deterministic-detector — checks your coding agent can't talk its way past</title>
+<meta name="description" content="A Claude Code plugin that pairs same-turn ruff feedback with CI-side test-order randomization and advisory mutation reporting. Enforcement lives outside the agent's session, on machines the agent doesn't control.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C1210'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23F87171'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%234ADE80'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0C1210;
+    --bg-raised: #111A16;
+    --bg-panel: #0E1613;
+    --border: #1F2C26;
+    --border-strong: #2C3E35;
+    --ink: #E9F0EB;
+    --muted: #A3B2A9;
+    --faint: #6E7E74;
+    --green: #4ADE80;
+    --green-dim: #2E8B57;
+    --red: #F87171;
+    --amber: #FBBF24;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(74, 222, 128, .25); }
+  a { color: var(--green); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  code, pre { font-family: var(--mono); }
+  pre { max-width: 100%; }
+  .cards > *, .qs-grid > *, .status-grid > *, .boundary > *, .honest .row > * { min-width: 0; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+
+  .skip {
+    position: absolute; left: -9999px; top: 0;
+    background: var(--green); color: #04140A; padding: 10px 16px; z-index: 99;
+    font-weight: 600; border-radius: 0 0 8px 0;
+  }
+  .skip:focus { left: 0; }
+
+  /* ---------- nav ---------- */
+  header.nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(12, 18, 16, .88);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    display: flex; align-items: center; gap: 28px;
+    height: 60px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 15px; font-weight: 600;
+    color: var(--ink); white-space: nowrap;
+  }
+  .brand:hover { text-decoration: none; }
+  .brand .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .brand .dot.r { background: var(--red); }
+  .brand .dot.g { background: var(--green); margin-left: -4px; }
+  nav.links { display: flex; gap: 22px; margin-left: auto; align-items: center; }
+  nav.links a { color: var(--muted); font-size: 14.5px; white-space: nowrap; }
+  nav.links a:hover { color: var(--ink); text-decoration: none; }
+  .gh-btn {
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 7px 14px; color: var(--ink) !important; font-weight: 500;
+  }
+  .gh-btn:hover { border-color: var(--green-dim); background: var(--bg-raised); }
+  @media (max-width: 900px) { nav.links a:not(.gh-btn) { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 88px 0 72px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(700px 340px at 18% 0%, rgba(74,222,128,.07), transparent 65%),
+      radial-gradient(600px 300px at 85% 10%, rgba(248,113,113,.05), transparent 65%);
+  }
+  .hero .wrap { position: relative; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em;
+    color: var(--muted); border: 1px solid var(--border);
+    border-radius: 999px; padding: 5px 14px; margin-bottom: 26px;
+    background: var(--bg-raised);
+  }
+  .kicker .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  h1 {
+    font-size: clamp(34px, 5.4vw, 56px);
+    line-height: 1.08; letter-spacing: -0.022em; font-weight: 700;
+    max-width: 17ch;
+  }
+  h1 .r { color: var(--red); }
+  h1 .g { color: var(--green); }
+  .sub {
+    margin-top: 22px; font-size: 19px; color: var(--muted); max-width: 62ch;
+  }
+  .sub strong { color: var(--ink); font-weight: 600; }
+  .cta-row { display: flex; gap: 14px; margin-top: 34px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; border-radius: 9px; padding: 12px 22px;
+    font-size: 15.5px; font-weight: 600;
+  }
+  .btn.primary { background: var(--green); color: #04140A; }
+  .btn.primary:hover { background: #63e694; text-decoration: none; }
+  .btn.ghost { border: 1px solid var(--border-strong); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--green-dim); background: var(--bg-raised); text-decoration: none; }
+  .hero-meta {
+    margin-top: 26px; display: flex; gap: 20px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 13px; color: var(--faint);
+  }
+
+  /* ---------- terminal panel ---------- */
+  .term {
+    margin-top: 56px; border: 1px solid var(--border-strong); border-radius: 14px;
+    background: var(--bg-panel); overflow: hidden;
+    box-shadow: 0 24px 60px -30px rgba(0,0,0,.6);
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    background: var(--bg-raised);
+  }
+  .term-bar .b { width: 11px; height: 11px; border-radius: 50%; background: var(--border-strong); }
+  .term-bar .title { margin-left: 8px; font-family: var(--mono); font-size: 12.5px; color: var(--faint); }
+  .term pre {
+    padding: 20px 22px; font-size: 13.5px; line-height: 1.7;
+    overflow-x: auto; color: var(--muted);
+  }
+  .term .c-red { color: var(--red); }
+  .term .c-green { color: var(--green); }
+  .term .c-amber { color: var(--amber); }
+  .term .c-ink { color: var(--ink); }
+  .term .c-dim { color: var(--faint); }
+
+  /* ---------- sections ---------- */
+  section { padding: 84px 0; border-top: 1px solid var(--border); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 13px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--green); margin-bottom: 14px;
+  }
+  h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -0.018em; line-height: 1.15; max-width: 24ch; }
+  .lede { margin-top: 16px; color: var(--muted); max-width: 66ch; font-size: 17.5px; }
+  .lede a { text-decoration: underline; text-decoration-color: var(--green-dim); }
+
+  /* boundary diagram */
+  .boundary {
+    margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden;
+  }
+  .boundary .side { padding: 30px 30px 26px; background: var(--bg-panel); }
+  .boundary .side + .side { border-left: 1px dashed var(--border-strong); }
+  .boundary h3 {
+    font-family: var(--mono); font-size: 13.5px; letter-spacing: .08em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .boundary .side.inside h3 { color: var(--amber); }
+  .boundary .side.outside h3 { color: var(--green); }
+  .boundary .tagline { font-size: 14px; color: var(--faint); margin-bottom: 20px; }
+  .boundary ul { list-style: none; display: grid; gap: 14px; }
+  .boundary li { display: flex; gap: 12px; font-size: 15px; color: var(--muted); }
+  .boundary li .mark { flex: none; font-family: var(--mono); }
+  .boundary li strong { color: var(--ink); font-weight: 600; }
+  @media (max-width: 800px) {
+    .boundary { grid-template-columns: 1fr; }
+    .boundary .side + .side { border-left: 0; border-top: 1px dashed var(--border-strong); }
+  }
+
+  /* component cards */
+  .cards { margin-top: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel);
+    padding: 26px 24px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .card:hover { border-color: var(--border-strong); }
+  .card .chip {
+    align-self: flex-start; font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: .05em; color: var(--green);
+    border: 1px solid var(--green-dim); border-radius: 999px; padding: 3px 10px;
+  }
+  .card h3 { font-size: 18.5px; letter-spacing: -0.01em; }
+  .card p { font-size: 15px; color: var(--muted); }
+  .card pre {
+    margin-top: auto; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 9px; padding: 14px 15px; font-size: 12.5px; line-height: 1.65;
+    color: var(--muted); overflow-x: auto;
+  }
+  .card pre .c-green { color: var(--green); }
+  .card pre .c-amber { color: var(--amber); }
+  .card pre .c-ink { color: var(--ink); }
+
+  /* honesty list */
+  .honest { margin-top: 44px; display: grid; gap: 16px; }
+  .honest .row {
+    display: grid; grid-template-columns: 250px 1fr; gap: 26px;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); padding: 26px 28px;
+  }
+  @media (max-width: 800px) { .honest .row { grid-template-columns: 1fr; gap: 10px; } }
+  .honest .not {
+    font-family: var(--mono); font-size: 15px; color: var(--red); font-weight: 600;
+    line-height: 1.5;
+  }
+  .honest .not .is { color: var(--green); display: block; margin-top: 4px; }
+  .honest .why { font-size: 15.5px; color: var(--muted); }
+  .honest .why strong { color: var(--ink); font-weight: 600; }
+
+  /* quick start */
+  .qs-grid { margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 860px) { .qs-grid { grid-template-columns: 1fr; } }
+  .step {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel);
+    padding: 24px 26px;
+  }
+  .step .n {
+    font-family: var(--mono); font-size: 12.5px; color: var(--green); margin-bottom: 10px;
+  }
+  .step h3 { font-size: 17.5px; margin-bottom: 8px; }
+  .step p { font-size: 14.5px; color: var(--muted); }
+  .step pre {
+    margin-top: 14px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 9px; padding: 13px 15px; font-size: 13px; line-height: 1.7;
+    color: var(--ink); overflow-x: auto;
+  }
+  .step pre .c-dim { color: var(--faint); }
+  .qs-note { margin-top: 18px; font-size: 14px; color: var(--faint); max-width: 76ch; }
+  .qs-note code { color: var(--muted); font-size: 13px; }
+
+  /* status */
+  .status-grid { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 800px) { .status-grid { grid-template-columns: 1fr; } }
+  .status-col {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel);
+    padding: 26px 28px;
+  }
+  .status-col h3 {
+    font-family: var(--mono); font-size: 13px; letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: 18px;
+  }
+  .status-col.done h3 { color: var(--green); }
+  .status-col.next h3 { color: var(--amber); }
+  .status-col ul { list-style: none; display: grid; gap: 12px; }
+  .status-col li { display: flex; gap: 12px; font-size: 15px; color: var(--muted); }
+  .status-col li .mark { flex: none; font-family: var(--mono); }
+  .status-col.done .mark { color: var(--green); }
+  .status-col.next .mark { color: var(--amber); }
+  .status-col li strong { color: var(--ink); font-weight: 600; }
+
+  /* provenance */
+  .prov {
+    margin-top: 44px; border: 1px solid var(--border-strong); border-radius: 14px;
+    background: linear-gradient(180deg, var(--bg-raised), var(--bg-panel));
+    padding: 30px 32px;
+  }
+  .prov p { color: var(--muted); font-size: 16px; max-width: 74ch; }
+  .prov p strong { color: var(--ink); }
+  .prov .doc-links { margin-top: 18px; display: flex; gap: 22px; flex-wrap: wrap; }
+  .prov .doc-links a { font-family: var(--mono); font-size: 13.5px; }
+
+  /* final cta */
+  .final { text-align: center; padding: 96px 0; }
+  .final h2 { margin: 0 auto; }
+  .final .lede { margin: 16px auto 0; }
+  .final .cta-row { justify-content: center; }
+
+  footer {
+    border-top: 1px solid var(--border); padding: 34px 0 44px;
+    font-size: 14px; color: var(--faint);
+  }
+  .foot-inner { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  .foot-inner .spacer { margin-left: auto; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="deterministic-detector home">
+      <span class="dot r" aria-hidden="true"></span><span class="dot g" aria-hidden="true"></span>
+      deterministic-detector
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="#boundary">How it works</a>
+      <a href="#inside">What's inside</a>
+      <a href="#honest">Honest by design</a>
+      <a href="#install">Install</a>
+      <a class="gh-btn" href="https://github.com/scottconverse/deterministic-detector">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top" style="border-top:0">
+  <div class="wrap">
+    <span class="kicker"><span class="pulse" aria-hidden="true"></span>Claude Code plugin · v0.1.0 · MIT</span>
+    <h1>Checks your coding agent <span class="r">can't</span> talk its way <span class="g">past</span>.</h1>
+    <p class="sub">deterministic-detector pairs <strong>same-turn lint feedback</strong> inside the
+    agent's session with <strong>test-order randomization and mutation reporting in CI</strong> —
+    on machines the agent doesn't control. Built for Python repos where an AI agent does real
+    editing, and "the tests passed" can quietly mean "the tests passed in the one order they
+    happen to be written in."</p>
+    <div class="cta-row">
+      <a class="btn primary" href="#install">Install the plugin</a>
+      <a class="btn ghost" href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/plan-v1.2.md">Read the decision record</a>
+    </div>
+    <div class="hero-meta">
+      <span>python · pytest · ruff</span>
+      <span>zero runtime dependencies</span>
+      <span>externally audited design</span>
+    </div>
+
+    <div class="term" role="img" aria-label="Terminal transcript: an agent edits a Python file, the hook returns ruff findings in the same turn, the agent fixes them, and the recheck passes.">
+      <div class="term-bar">
+        <span class="b" aria-hidden="true"></span><span class="b" aria-hidden="true"></span><span class="b" aria-hidden="true"></span>
+        <span class="title">PostToolUse · ruff_feedback.py</span>
+      </div>
+      <pre><span class="c-dim">agent edits</span> <span class="c-ink">parser.py</span> <span class="c-dim">→ hook fires before the turn can end</span>
+
+<span class="c-red">E401</span>  Multiple imports on one line
+<span class="c-red">F401</span>  `os` imported but unused
+<span class="c-red">F401</span>  `sys` imported but unused
+<span class="c-amber">1 file would be reformatted</span>
+<span class="c-dim">exit 2 — findings fed back to the agent, same turn</span>
+
+<span class="c-dim">agent fixes</span> <span class="c-ink">parser.py</span> <span class="c-dim">→ hook re-fires</span>
+<span class="c-green">exit 0 — clean</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="boundary">
+  <div class="wrap">
+    <p class="eyebrow">The core idea</p>
+    <h2>Enforcement lives outside the agent boundary.</h2>
+    <p class="lede">A check that runs inside an agent's own session is a check the agent can skip,
+    reinterpret, or reason its way around. So the harness splits in two: fast feedback where the
+    agent works, and every check that can actually fail a build on CI runners the agent has no
+    access to — pinned to the exact commit under review.</p>
+
+    <div class="boundary">
+      <div class="side inside">
+        <h3>Inside the session</h3>
+        <p class="tagline">fast, unskippable feedback — but never load-bearing</p>
+        <ul>
+          <li><span class="mark c-amber" style="color:var(--amber)">↺</span><span><strong>ruff hook</strong> fires after every <code>Edit</code>/<code>Write</code>/<code>MultiEdit</code> on a .py file and returns format and lint findings to the agent in the same turn. Silent in repos without ruff config.</span></li>
+          <li><span class="mark c-amber" style="color:var(--amber)">↺</span><span><strong>smoke re-check</strong> re-verifies the hook after client updates, so a payload-schema change can't kill it silently.</span></li>
+        </ul>
+      </div>
+      <div class="side outside">
+        <h3>Outside, in CI</h3>
+        <p class="tagline">deterministic verdicts on machines no agent controls</p>
+        <ul>
+          <li><span class="mark" style="color:var(--green)">✓</span><span><strong>randomized-suite</strong> runs the full test suite in random order on every PR, seed preserved in the log for exact reproduction. Order-dependent failures are real bugs, surfaced instead of hidden.</span></li>
+          <li><span class="mark" style="color:var(--green)">✓</span><span><strong>mutation-report</strong> mutates only the non-test Python files changed against the base branch and lists every surviving mutant in the job summary — a weak test can't hide behind a green run.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="inside">
+  <div class="wrap">
+    <p class="eyebrow">What's inside</p>
+    <h2>Three pieces, one distribution unit.</h2>
+    <p class="lede">The plugin ships the hook declaratively — no per-repo settings merges, nothing
+    an agent can clobber. Everything a plugin can't ship (dev dependencies, CI wiring) is handled
+    by the bundled installer skill, which recons the repo and reports before changing anything.</p>
+
+    <div class="cards">
+      <div class="card">
+        <span class="chip">hook</span>
+        <h3>Same-turn ruff feedback</h3>
+        <p>A stdlib-only Python script wired to <code>PostToolUse</code>. Reads the edited path
+        from the event payload, runs <code>ruff format --check</code> and <code>ruff check</code>,
+        and feeds failures straight back to the agent. Exits silently for non-Python files,
+        repos without ruff config, or missing ruff — it never breaks editing.</p>
+        <pre><span class="c-amber">"PostToolUse"</span>: [{
+  <span class="c-amber">"matcher"</span>: <span class="c-green">"Edit|Write|MultiEdit"</span>,
+  <span class="c-amber">"hooks"</span>: [{ <span class="c-amber">"type"</span>: <span class="c-green">"command"</span>,
+    <span class="c-amber">"command"</span>: <span class="c-green">"python …/ruff_feedback.py"</span> }]
+}]</pre>
+      </div>
+      <div class="card">
+        <span class="chip">skill</span>
+        <h3>/install-detector</h3>
+        <p>Wires a target repo end to end: installs and pins <code>pytest-randomly</code> and
+        <code>detect-test-pollution</code>, instantiates the CI jobs, and proves each step with
+        verbatim evidence — no step reports PASS without its acceptance check having actually
+        run. <code>smoke</code> mode re-verifies the hook on demand.</p>
+        <pre><span class="c-dim">$</span> <span class="c-ink">/install-detector</span>
+<span class="c-green">recon</span>      env, tests, CI, ruff config
+<span class="c-green">randomize</span>  two runs, two seeds shown
+<span class="c-green">ci-jobs</span>    both informational at first
+<span class="c-amber">owner</span>      branch-protection recipe → you</pre>
+      </div>
+      <div class="card">
+        <span class="chip">ci template</span>
+        <h3>Two detector jobs</h3>
+        <p>A GitHub Actions template the installer adapts per repo. Diff-scoping fetches full
+        history so the mutation job can never pass vacuously on an empty diff — and it refuses
+        loudly rather than silently producing no data. mutmut runs on Linux runners, where it
+        actually works.</p>
+        <pre><span class="c-amber">randomized-suite</span>
+  pytest -p randomly  <span class="c-dim"># seed kept in log</span>
+<span class="c-amber">mutation-report</span>
+  fetch-depth: 0      <span class="c-dim"># no vacuous pass</span>
+  <span class="c-dim"># survivors → job summary, exit 0</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="honest">
+  <div class="wrap">
+    <p class="eyebrow">Honest by design</p>
+    <h2>What it deliberately is not.</h2>
+    <p class="lede">Every constraint below came out of an externally audited design pass — the
+    kind of thing most tooling decides silently. Here they're the product.</p>
+
+    <div class="honest">
+      <div class="row">
+        <div class="not">not a mutation gate<span class="is">→ an advisory report</span></div>
+        <p class="why"><strong>Equivalent mutants exist</strong> — mutations that provably can't
+        change behavior, which no test can ever kill. A hard "zero survivors" gate fails
+        legitimate code as a matter of course. The report still runs on every PR and still names
+        what survived; it just can't fail your build on its own.</p>
+      </div>
+      <div class="row">
+        <div class="not">not a pre-write block<span class="is">→ forced same-turn feedback</span></div>
+        <p class="why">The hook runs <strong>after</strong> the edit lands (<code>PostToolUse</code>) —
+        it can't stop a bad write, and pre-checking content that doesn't exist yet is the wrong
+        shape anyway. What it guarantees is narrower and real: the agent cannot end a turn
+        without being confronted with the findings.</p>
+      </div>
+      <div class="row">
+        <div class="not">not agent-managed<span class="is">→ owner-only enforcement</span></div>
+        <p class="why">The required-status-check flag is where the whole architecture
+        concentrates — one unticked box removes everything. So <strong>no agent ever touches
+        branch protection, in either direction.</strong> The installer prints the one-command
+        recipe and stops; the flip is yours.</p>
+      </div>
+      <div class="row">
+        <div class="not">not required on day one<span class="is">→ burn-in first</span></div>
+        <p class="why">A suite that has never run in random order probably carries latent
+        pollution — that's the premise of the project. A day-one required check would block the
+        first unrelated PR for a months-old bug: <strong>real bug, wrong hostage.</strong> The
+        randomized job stays informational until five green runs across different seeds, then
+        you flip it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <p class="eyebrow">Quick start</p>
+    <h2>Clone, restart, install into a repo.</h2>
+
+    <div class="qs-grid">
+      <div class="step">
+        <p class="n">01 · get the plugin</p>
+        <h3>Clone into your skills directory</h3>
+        <p>Any folder under <code>~/.claude/skills/</code> with a plugin manifest auto-loads at
+        the next session start — no marketplace, no extra tooling.</p>
+        <pre>git clone https://github.com/scottconverse/deterministic-detector \
+  ~/.claude/skills/deterministic-detector</pre>
+        <p style="margin-top:12px; font-size:13.5px; color:var(--faint)">For one-off testing:
+        <code>claude --plugin-dir ./deterministic-detector</code> loads it for a single session.</p>
+      </div>
+      <div class="step">
+        <p class="n">02 · wire a repo</p>
+        <h3>Run the installer where your agent works</h3>
+        <p>In a new session, inside the target repository. It recons first, reports before
+        changing anything, and ends with the owner recipe for branch protection.</p>
+        <pre><span class="c-dim">›</span> /install-detector
+<span class="c-dim">›</span> /install-detector smoke   <span class="c-dim"># after client updates</span></pre>
+        <p style="margin-top:12px; font-size:13.5px; color:var(--faint)">Needs: a Python repo
+        with pytest, <code>ruff</code> on PATH for the hook, GitHub Actions for the CI jobs.</p>
+      </div>
+    </div>
+    <p class="qs-note">Windows note: mutmut cannot run natively on Windows (upstream limitation,
+    verified in source — an unconditional platform guard plus a POSIX-only stdlib import). That's
+    fine by design: the load-bearing mutation lane is the Linux CI job, not your dev box.</p>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <p class="eyebrow">Project status</p>
+    <h2>Early-stage, and says so.</h2>
+    <p class="lede">v0.1.0. The design went through two external audit rounds before any code was
+    written; every implementation fact below is backed by the evidence reports in the repo, not
+    by claims.</p>
+
+    <div class="status-grid">
+      <div class="status-col done">
+        <h3>Verified today</h3>
+        <ul>
+          <li><span class="mark">✓</span><span><strong>Hook behavior proven red-first</strong> against real ruff: violations → exit 2 with findings on stderr; clean, non-Python, no-config, and malformed-payload cases all exit silently.</span></li>
+          <li><span class="mark">✓</span><span><strong>Built against live schemas</strong> — the hooks payload, plugin manifest, and mutmut CLI were verified against current docs and a real local trial, not recalled from training data.</span></li>
+          <li><span class="mark">✓</span><span><strong>Two vacuous-pass bugs caught pre-release</strong> by the project's own make-it-fail-first rule, and fixed before first push.</span></li>
+        </ul>
+      </div>
+      <div class="status-col next">
+        <h3>Not yet</h3>
+        <ul>
+          <li><span class="mark">→</span><span><strong>Pilot deployment</strong> on a real repository — installer acceptance, the CI weak-test/strong-test mutation demo, and burn-in are designed and documented but not yet exercised end to end.</span></li>
+          <li><span class="mark">→</span><span><strong>Code-graph queries (planned, v1.1)</strong> — blast-radius lookups via an MCP-served code graph; the candidate tool is verified and adopted, integration not yet built.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="prov">
+      <p><strong>The design record is public.</strong> The original task spec, the audited
+      implementation plan (decision record D1–D9, risk register, phased acceptance criteria),
+      and the build evidence report — including the defects found and the measured costs — ship
+      in the repository, unedited.</p>
+      <div class="doc-links">
+        <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/plan-v1.2.md">plan-v1.2.md</a>
+        <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/original-spec.md">original-spec.md</a>
+        <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/p0-p1-report-2026-07-22.md">p0-p1-report.md</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <p class="eyebrow">Get started</p>
+    <h2>Give your agent reflexes it can't opt out of.</h2>
+    <p class="lede">One clone to install the plugin, one command to wire a repo. The only thing
+    it asks of you is the one thing it refuses to automate: flipping the required check.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/scottconverse/deterministic-detector">View on GitHub</a>
+      <a class="btn ghost" href="https://github.com/scottconverse/deterministic-detector/issues">Report an issue</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>deterministic-detector · MIT License</span>
+    <a href="https://github.com/scottconverse/deterministic-detector">GitHub</a>
+    <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/plan-v1.2.md">Decision record</a>
+    <a href="https://github.com/scottconverse/deterministic-detector/blob/main/LICENSE">License</a>
+    <span class="spacer"></span>
+    <span>Enforcement outside the agent boundary.</span>
+  </div>
+</footer>
+
+</body>
+</html>
