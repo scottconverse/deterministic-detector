@@ -1,0 +1,3 @@
+pytest==9.1.1
+pytest-randomly==4.0.1
+detect-test-pollution==1.2.0
