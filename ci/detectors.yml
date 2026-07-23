@@ -34,7 +34,9 @@ on:
 
 jobs:
   randomized-suite:
-    name: randomized-suite (informational until owner flips it, see header)
+    # Status-check context = this name; keep it plain so branch protection
+    # references "randomized-suite" exactly (see header for its status rules).
+    name: randomized-suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +62,8 @@ jobs:
             | tee -a "$GITHUB_STEP_SUMMARY" || true
 
   mutation-report:
-    name: mutation-report (permanently informational, see header)
+    # Permanently informational (see header); plain name for log/summary greps.
+    name: mutation-report
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 0 is MANDATORY. Diff-scoping needs the base branch
