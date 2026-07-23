@@ -15,12 +15,13 @@ import pytest
 
 def _find_hook() -> Path:
     # mutmut copies scoped sources into a mutants/ tree and runs the suite
-    # from the repo root; under that layout __file__-relative resolution
-    # points at a hooks/ dir that was never copied. Fall back to cwd.
-    for base in (Path(__file__).resolve().parents[1], Path.cwd()):
-        candidate = base / "hooks" / "ruff_feedback.py"
-        if candidate.exists():
-            return candidate
+    # from inside it; hooks/ is only in the real repo root. Walk the
+    # ancestors of both the test file and the cwd until it appears.
+    for anchor in (Path(__file__).resolve().parent, Path.cwd().resolve()):
+        for base in (anchor, *anchor.parents):
+            candidate = base / "hooks" / "ruff_feedback.py"
+            if candidate.exists():
+                return candidate
     raise FileNotFoundError("hooks/ruff_feedback.py not found from test anchor or cwd")
 
 
