@@ -507,25 +507,27 @@
 <section id="status">
   <div class="wrap">
     <p class="eyebrow">Project status</p>
-    <h2>Early-stage, and says so.</h2>
+    <h2>Early-stage, self-hosted, and says so.</h2>
     <p class="lede">v0.1.0. The design went through two external audit rounds before any code was
-    written; every implementation fact below is backed by the evidence reports in the repo, not
-    by claims.</p>
+    written, then the harness was piloted on its own repository — this repo runs its own
+    detectors on every pull request. Every fact below is backed by the evidence reports in the
+    repo, not by claims.</p>
 
     <div class="status-grid">
       <div class="status-col done">
-        <h3>Verified today</h3>
+        <h3>Verified</h3>
         <ul>
-          <li><span class="mark">✓</span><span><strong>Hook behavior proven red-first</strong> against real ruff: violations → exit 2 with findings on stderr; clean, non-Python, no-config, and malformed-payload cases all exit silently.</span></li>
+          <li><span class="mark">✓</span><span><strong>Hook proven red-first and end-to-end</strong> — violations → exit 2 with findings on stderr; clean, non-Python, no-config, and malformed-payload cases exit silently; confirmed firing on real agent edits in a live session.</span></li>
+          <li><span class="mark">✓</span><span><strong>Pilot completed on this very repository</strong> — installer acceptance, CI jobs on real PR SHAs, and the full weak-test demo: a green suite hid two surviving mutants, the job named them, strengthened tests killed 2/2. Burn-in: five green randomized runs across five distinct seeds.</span></li>
           <li><span class="mark">✓</span><span><strong>Built against live schemas</strong> — the hooks payload, plugin manifest, and mutmut CLI were verified against current docs and a real local trial, not recalled from training data.</span></li>
-          <li><span class="mark">✓</span><span><strong>Two vacuous-pass bugs caught pre-release</strong> by the project's own make-it-fail-first rule, and fixed before first push.</span></li>
+          <li><span class="mark">✓</span><span><strong>Four silent-failure classes caught and closed</strong> by the project's own make-it-fail-first rule — two before first release, two more found by the pilot itself (including baselines that fail before any mutant is evaluated, which previously read as clean).</span></li>
         </ul>
       </div>
       <div class="status-col next">
         <h3>Not yet</h3>
         <ul>
-          <li><span class="mark">→</span><span><strong>Pilot deployment</strong> on a real repository — installer acceptance, the CI weak-test/strong-test mutation demo, and burn-in are designed and documented but not yet exercised end to end.</span></li>
           <li><span class="mark">→</span><span><strong>Code-graph queries (planned, v1.1)</strong> — blast-radius lookups via an MCP-served code graph; the candidate tool is verified and adopted, integration not yet built.</span></li>
+          <li><span class="mark">→</span><span><strong>Piloted beyond its own walls</strong> — a suite written alongside the harness has no legacy pollution to find; randomization proving itself against an older, larger suite is the next real test.</span></li>
         </ul>
       </div>
     </div>
@@ -533,12 +535,13 @@
     <div class="prov">
       <p><strong>The design record is public.</strong> The original task spec, the audited
       implementation plan (decision record D1–D9, risk register, phased acceptance criteria),
-      and the build evidence report — including the defects found and the measured costs — ship
-      in the repository, unedited.</p>
+      and the build and pilot evidence reports — including every defect found and the measured
+      costs — ship in the repository, unedited.</p>
       <div class="doc-links">
         <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/plan-v1.2.md">plan-v1.2.md</a>
         <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/original-spec.md">original-spec.md</a>
         <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/p0-p1-report-2026-07-22.md">p0-p1-report.md</a>
+        <a href="https://github.com/scottconverse/deterministic-detector/blob/main/docs/pilot-report-2026-07-23.md">pilot-report.md</a>
       </div>
     </div>
   </div>
