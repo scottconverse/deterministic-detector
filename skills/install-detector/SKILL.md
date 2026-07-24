@@ -57,7 +57,14 @@ continue to the next item (do not silently skip, do not fake green).
    record a deliberate promotion decision.
    ```
 
-5. **Code-graph index.** Build the repo's blast-radius graph:
+5. **Code-graph index.** First, pre-warm the uvx cache:
+   `uvx --from code-review-graph==2.3.7 code-review-graph --version` must
+   succeed and its output be shown. This is an acceptance item, not a
+   convenience: the first-ever spawn of the MCP server downloads the package
+   and can outrun the MCP client's connection window, so a machine whose
+   cache was never warmed hits a server that silently fails to load on its
+   first real session. Warm at install and that cold start never happens.
+   Then build the repo's blast-radius graph:
    `uvx --from code-review-graph==2.3.7 code-review-graph build` from the repo
    root, and add `.code-review-graph/` to the repo's `.gitignore` (the index
    is a local artifact, never committed). Acceptance: run one real query —
@@ -82,7 +89,9 @@ continue to the next item (do not silently skip, do not fake green).
    code-graph MCP server: confirm this session has the plugin's `code-graph`
    tools (names like `...code-graph...query_graph_tool`). If absent, the
    likely cause is a cold uvx cache — the first-ever spawn downloads the
-   package and can outrun the MCP client's connection window. Pre-warm it
+   package and can outrun the MCP client's connection window. (Install
+   step 5 pre-warms the cache precisely so this never happens; hitting it
+   in smoke means install ran short or the cache was cleared.) Pre-warm it
    (`uvx --from code-review-graph==2.3.7 code-review-graph --version`), report
    the server as PENDING-RESTART, and note that the next session start is the
    real check. Then the hook: write a scratch `.py` file
