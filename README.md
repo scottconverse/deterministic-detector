@@ -2,11 +2,11 @@
 
 **Website: [scottconverse.github.io/deterministic-detector](https://scottconverse.github.io/deterministic-detector/)**
 
-A Claude Code plugin that gives an AI coding agent a few reflexes it doesn't
-reliably have on its own: catching lint/format problems in the same turn,
-running tests in randomized order instead of a fixed order that can hide
-order-dependent bugs, and reporting (not gating on) surviving mutants in
-changed code.
+A dual-compatible Claude Code and Codex plugin that gives an AI coding agent a
+few reflexes it doesn't reliably have on its own: catching lint/format problems
+in the same turn, running tests in randomized order instead of a fixed order
+that can hide order-dependent bugs, and reporting (not gating on) surviving
+mutants in changed code.
 
 It's meant for repos where an AI agent is doing real editing — the kind of
 place where "the tests passed" can quietly mean "the tests passed in the one
@@ -14,10 +14,10 @@ order they happen to be written in."
 
 ## What it is
 
-- A **ruff hook** that fires right after any `Edit`/`Write`/`MultiEdit` on a
-  `.py` file and feeds ruff's format/lint output back to the agent in the
-  same turn, if the repo has ruff configured.
-- An **`/install-detector` skill** that wires the repo-side pieces into a
+- A **ruff hook** that fires right after Claude edits a `.py` file or Codex
+  applies a patch to one, then feeds ruff's format/lint output back to the
+  agent in the same turn, if the repo has ruff configured.
+- An **`install-detector` skill** that wires the repo-side pieces into a
   target repo: `pytest-randomly`, `detect-test-pollution`, and two GitHub
   Actions jobs (a randomized-order test run, and a diff-scoped mutation
   report).
@@ -51,12 +51,43 @@ has proven itself clean across several different random orders (burn-in).
 No agent ever touches branch-protection or required-status-check settings,
 in either direction — that's an owner-only action, always.
 
-## Install
+## Requirements
 
-Add this plugin to Claude Code, then in the target repo run
-`/install-detector`. It recons the repo first and reports before changing
-anything. Run `/install-detector smoke` after any Claude Code client update
-to confirm the hook still works.
+- Python repository using pytest
+- `ruff` available on the agent session's `PATH`
+- [`uv`](https://docs.astral.sh/uv/) for the pinned code-graph MCP server
+- GitHub Actions for the two CI detector jobs
+
+## Install for Claude Code
+
+Clone the plugin into Claude's skills directory, then start a new session:
+
+```sh
+git clone https://github.com/scottconverse/deterministic-detector \
+  ~/.claude/skills/deterministic-detector
+```
+
+For a one-off session, use
+`claude --plugin-dir ./deterministic-detector`.
+
+## Install for Codex
+
+Add this repository as a plugin marketplace:
+
+```sh
+codex plugin marketplace add scottconverse/deterministic-detector
+```
+
+Then open the Codex plugin browser, install **Deterministic Detector**, review
+and trust its Ruff hook, and start a new session. In the ChatGPT desktop app,
+restart the app and install it from the Plugins Directory.
+
+## Wire a target repository
+
+In the target repository, invoke `/install-detector` in Claude Code or
+`$install-detector` in Codex. The skill recons the repo first and reports before
+changing anything. Run the skill in `smoke` mode after either client updates to
+confirm the hook and code-graph server still work.
 
 On a machine that has never run the graph tool, pre-warm the uvx cache once
 before your first session with the plugin — otherwise the code-graph MCP
@@ -64,6 +95,17 @@ server's first spawn includes a package download and can miss the client's
 connection window (one session, self-heals after):
 
     uvx --from code-review-graph==2.3.7 code-review-graph --version
+
+Claude and Codex use separate host manifests and hook declarations in this
+repository, but share the same skill, MCP configuration, hook implementation,
+CI template, and standing instructions. Host-specific adapters are tested
+together so one host cannot drift silently from the other.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes are recorded in
+[CHANGELOG.md](CHANGELOG.md). This project is available under the
+[MIT License](LICENSE).
 
 ## Full design record
 

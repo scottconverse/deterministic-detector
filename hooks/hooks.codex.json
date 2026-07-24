@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/ruff_feedback.py\"",
+            "statusMessage": "Checking edited Python files with Ruff"
+          }
+        ]
+      }
+    ]
+  }
+}

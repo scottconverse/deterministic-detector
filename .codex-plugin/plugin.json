@@ -1,0 +1,28 @@
+{
+  "name": "deterministic-detector",
+  "displayName": "Deterministic Detector",
+  "version": "0.3.0",
+  "description": "deterministic detectors for AI-agent development",
+  "author": {
+    "name": "Scott Converse"
+  },
+  "repository": "https://github.com/scottconverse/deterministic-detector",
+  "license": "MIT",
+  "keywords": ["testing", "ruff", "mutation-testing", "pytest-randomly", "ci"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/hooks.codex.json",
+  "interface": {
+    "displayName": "Deterministic Detector",
+    "shortDescription": "Same-turn lint feedback and deterministic test detectors",
+    "longDescription": "Catch Python lint and format problems after edits, randomize test order in CI, report surviving mutants, and query a code graph for blast radius.",
+    "developerName": "Scott Converse",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://scottconverse.github.io/deterministic-detector/",
+    "defaultPrompt": [
+      "Install the deterministic detector harness in this repository.",
+      "Smoke-test the deterministic detector hook and code graph."
+    ]
+  }
+}

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+
 def _find_hook() -> Path:
     # mutmut copies scoped sources into a mutants/ tree and runs the suite
     # from inside it; hooks/ is only in the real repo root. Walk the
@@ -30,7 +31,7 @@ RUFF = shutil.which("ruff")
 
 VIOLATING_SOURCE = "import os,sys\nx=[1,2 ,3]\n"
 CLEAN_SOURCE = "def add(a: int, b: int) -> int:\n    return a + b\n"
-RUFF_CONFIG = '[tool.ruff]\nline-length = 100\n'
+RUFF_CONFIG = "[tool.ruff]\nline-length = 100\n"
 
 
 def run_hook(stdin_bytes: bytes) -> subprocess.CompletedProcess:
@@ -47,6 +48,20 @@ def payload_for(path: Path) -> bytes:
         "hook_event_name": "PostToolUse",
         "tool_name": "Edit",
         "tool_input": {"file_path": str(path)},
+    }
+    return json.dumps(payload).encode("utf-8")
+
+
+def codex_payload_for(path: Path, cwd: Path) -> bytes:
+    payload = {
+        "hook_event_name": "PostToolUse",
+        "tool_name": "apply_patch",
+        "cwd": str(cwd),
+        "tool_input": {
+            "command": (
+                f"*** Begin Patch\n*** Update File: {path.relative_to(cwd)}\n@@\n*** End Patch\n"
+            )
+        },
     }
     return json.dumps(payload).encode("utf-8")
 
@@ -117,8 +132,18 @@ def test_clean_file_with_config_is_silent(tmp_path):
 
 
 @pytest.mark.skipif(RUFF is None, reason="ruff not on PATH")
+def test_codex_apply_patch_violation_exits_2_with_findings(tmp_path):
+    (tmp_path / "pyproject.toml").write_text(RUFF_CONFIG)
+    target = tmp_path / "bad.py"
+    target.write_text(VIOLATING_SOURCE)
+    result = run_hook(codex_payload_for(target, tmp_path))
+    assert result.returncode == 2
+    assert b"F401" in result.stderr
+
+
+@pytest.mark.skipif(RUFF is None, reason="ruff not on PATH")
 def test_ruff_toml_config_is_also_discovered(tmp_path):
-    (tmp_path / "ruff.toml").write_text('line-length = 100\n')
+    (tmp_path / "ruff.toml").write_text("line-length = 100\n")
     target = tmp_path / "bad.py"
     target.write_text(VIOLATING_SOURCE)
     result = run_hook(payload_for(target))
