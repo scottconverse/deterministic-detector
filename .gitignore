@@ -5,3 +5,10 @@ __pycache__/
 mutants/
 *.egg-info/
 .code-review-graph/
+.rigor/
+.DS_Store
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/

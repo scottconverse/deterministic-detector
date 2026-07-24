@@ -10,9 +10,10 @@ victim test with the polluter still in place is not a fix.
 agents may be active in it. Use a separate worktree (or clone) per
 concurrently-running agent.
 
-**Smoke after client updates.** Re-run `/install-detector smoke` after any
-Claude Code client update. A payload-schema change can silently kill the
-ruff hook; the smoke check is how that's caught instead of assumed.
+**Smoke after client updates.** Re-run the `install-detector` skill in smoke
+mode after any Claude Code or Codex client update. A payload-schema change can
+silently kill the ruff hook; the smoke check is how that's caught instead of
+assumed.
 
 **Branch protection (D9).** Agents never create, modify, or remove
 required-status-check or branch-protection settings, in either direction —

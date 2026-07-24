@@ -1,6 +1,6 @@
 ---
 name: install-detector
-description: Install the deterministic-detector harness (pytest-randomly, detect-test-pollution, diff-scoped mutation CI, ruff hook smoke check) into the current repo. Use when the user says "/install-detector", "install the detector harness", or asks to set up deterministic detectors, randomized test order, or mutation testing CI for this repo. Also handles "/install-detector smoke" to re-verify the ruff hook after a Claude Code client update.
+description: Install the deterministic-detector harness (pytest-randomly, detect-test-pollution, diff-scoped mutation CI, ruff hook smoke check) into the current repo. Use when the user invokes /install-detector in Claude Code, $install-detector in Codex, says "install the detector harness", or asks to set up deterministic detectors, randomized test order, or mutation testing CI. Also handles smoke mode after a supported client update.
 ---
 
 # install-detector
@@ -9,6 +9,9 @@ Installs the repo-side pieces of the deterministic-detector harness. The ruff
 hook itself ships with the plugin and needs no per-repo install; this skill
 wires everything the plugin cannot ship declaratively. Full design record:
 `docs/plan-v1.2.md` in the `deterministic-detector` plugin repo.
+
+Before acting, read `../../instructions.md` relative to this `SKILL.md`. Those
+standing rules are shared by the Claude Code and Codex packages.
 
 Every step reports evidence before moving on. No step is marked PASS without
 having actually run. On failure: report honestly with the real output, then
@@ -85,7 +88,8 @@ continue to the next item (do not silently skip, do not fake green).
    clears it, both outputs shown verbatim, branch deleted. If no local lane
    is offered, run the same weak/strong demo through the CI job instead.
 
-7. **Smoke mode** (`/install-detector smoke`). Two checks. First, the
+7. **Smoke mode** (`/install-detector smoke` in Claude Code, or invoke
+   `$install-detector` and request smoke mode in Codex). Two checks. First, the
    code-graph MCP server: confirm this session has the plugin's `code-graph`
    tools (names like `...code-graph...query_graph_tool`). If absent, the
    likely cause is a cold uvx cache — the first-ever spawn downloads the
@@ -97,9 +101,9 @@ continue to the next item (do not silently skip, do not fake green).
    real check. Then the hook: write a scratch `.py` file
    containing a deliberate ruff violation, edit it via the normal tool path,
    confirm the hook's stderr comes back to the agent, then delete the scratch
-   file. This is also the prescribed re-check after any Claude Code client
-   update — a client change to the hooks payload can silently kill the hook;
-   this step is how that gets caught instead of assumed.
+   file. This is also the prescribed re-check after any Claude Code or Codex
+   client update — a client change to the hooks payload can silently kill the
+   hook; this step is how that gets caught instead of assumed.
 
 8. **Final report.** One line per item:
 
