@@ -187,6 +187,36 @@
     .boundary .side + .side { border-left: 0; border-top: 1px dashed var(--border-strong); }
   }
 
+  /* dev rigor integration */
+  .rigor-pair {
+    margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  .rigor-role {
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); padding: 28px;
+  }
+  .rigor-role .label {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--green); margin-bottom: 10px;
+  }
+  .rigor-role h3 { font-size: 21px; margin-bottom: 10px; }
+  .rigor-role p { color: var(--muted); font-size: 15.5px; }
+  .rigor-flow {
+    margin-top: 18px; border: 1px solid var(--border-strong); border-radius: 14px;
+    background: linear-gradient(180deg, var(--bg-raised), var(--bg-panel));
+    padding: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+  .rigor-tier { border-left: 2px solid var(--green-dim); padding-left: 16px; }
+  .rigor-tier strong { display: block; color: var(--ink); margin-bottom: 5px; }
+  .rigor-tier span { color: var(--muted); font-size: 14.5px; }
+  .rigor-actions {
+    margin-top: 28px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .rigor-note { color: var(--faint); font-size: 14px; max-width: 52ch; }
+  @media (max-width: 800px) {
+    .rigor-pair, .rigor-flow { grid-template-columns: 1fr; }
+  }
+
   /* component cards */
   .cards { margin-top: 44px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
   @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
@@ -306,6 +336,7 @@
     </a>
     <nav class="links" aria-label="Main">
       <a href="#boundary">How it works</a>
+      <a href="#rigor">Dev Rigor</a>
       <a href="#inside">What's inside</a>
       <a href="#honest">Honest by design</a>
       <a href="#install">Install</a>
@@ -381,6 +412,57 @@
           <li><span class="mark" style="color:var(--green)">✓</span><span><strong>mutation-report</strong> mutates only the non-test Python files changed against the base branch and lists every surviving mutant in the job summary — a weak test can't hide behind a green run.</span></li>
         </ul>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="rigor">
+  <div class="wrap">
+    <p class="eyebrow">Designed to work together</p>
+    <h2>Deterministic evidence for the Dev Rigor gates.</h2>
+    <p class="lede">These are separate tools with an explicit contract. Dev Rigor Stack Lite
+    coordinates <strong>PLAN → BUILD → VERIFY → REVIEW → MERGE</strong> and sizes the work by
+    blast radius. deterministic-detector supplies evidence the agent cannot replace with a
+    confident explanation: immediate Ruff findings, randomized CI, and a changed-code mutation
+    report.</p>
+
+    <div class="rigor-pair">
+      <div class="rigor-role">
+        <p class="label">Dev Rigor Stack Lite</p>
+        <h3>Decides what proof the change needs.</h3>
+        <p>Plans the unit, requires test-first implementation, challenges the claims, selects the
+        review depth, and permits only a green-path merge. At a release boundary it adds the full
+        gauntlet, documentation, newcomer, public-surface, and rollback gates.</p>
+      </div>
+      <div class="rigor-role">
+        <p class="label">deterministic-detector</p>
+        <h3>Produces evidence for those decisions.</h3>
+        <p>Returns Ruff findings in the editing turn, runs the test suite in randomized order on
+        the exact PR commit, and reports surviving mutations in changed Python files. The stack
+        consumes that evidence instead of treating a fixed-order local test run as sufficient.</p>
+      </div>
+    </div>
+
+    <div class="rigor-flow" aria-label="Detector evidence required by Dev Rigor at each blast radius">
+      <div class="rigor-tier">
+        <strong>Low blast radius</strong>
+        <span>Same-turn Ruff feedback is enough; no detector CI evidence is required.</span>
+      </div>
+      <div class="rigor-tier">
+        <strong>Medium and above</strong>
+        <span>The randomized-suite CI job must be green, with its seed preserved in the log.</span>
+      </div>
+      <div class="rigor-tier">
+        <strong>High or release</strong>
+        <span>The mutation report must be present and every survivor dispositioned with a reason.</span>
+      </div>
+    </div>
+
+    <div class="rigor-actions">
+      <a class="btn primary" href="https://github.com/scottconverse/dev-rigor-stack-lite#install">Install Dev Rigor Stack Lite</a>
+      <p class="rigor-note">Portable Agent Skills bundle for Codex, Claude Code, Antigravity,
+      and compatible hosts. The stack still works without this detector; when both are installed,
+      it consumes the detector evidence proportionally.</p>
     </div>
   </div>
 </section>
@@ -550,6 +632,7 @@ codex plugin add \
           <li><span class="mark">✓</span><span><strong>Hook proven red-first and end-to-end</strong> — violations → exit 2 with findings on stderr; clean, non-Python, no-config, and malformed-payload cases exit silently; confirmed firing on real agent edits in a live session.</span></li>
           <li><span class="mark">✓</span><span><strong>Pilot completed on this very repository</strong> — installer acceptance, CI jobs on real PR SHAs, and the full weak-test demo: a green suite hid two surviving mutants, the job named them, strengthened tests killed 2/2. Burn-in: five green randomized runs across five distinct seeds.</span></li>
           <li><span class="mark">✓</span><span><strong>One repository, two proven hosts</strong> — Claude Code's original package contract remains covered, while fresh Codex sessions installed the plugin, loaded its shared skill and instructions, returned Ruff findings from a real <code>apply_patch</code>, and called the shared code-graph MCP server.</span></li>
+          <li><span class="mark">✓</span><span><strong>Dev Rigor integration exercised end to end</strong> — the dual-host v0.3.0 unit flowed through plan, test-first build, adversarial verification, review, green PR checks, merge, Pages deployment, and a cache-busted live visitor audit, with both detector CI jobs supplying exact-commit evidence.</span></li>
           <li><span class="mark">✓</span><span><strong>Four silent-failure classes caught and closed</strong> by the project's own make-it-fail-first rule — two before first release, two more found by the pilot itself (including baselines that fail before any mutant is evaluated, which previously read as clean).</span></li>
           <li><span class="mark">✓</span><span><strong>Code-graph queries (v0.2.0)</strong> — an MCP-served graph (pinned, run via uvx, local SQLite index) answers callers and dependent tests as an enumerable set: validated 21/21 exact against grep ground truth, including a module-alias call that text matching misses. Run against a real, unrelated codebase at scale — a 66,963-edge index built in seconds — leaving that repository's working tree untouched.</span></li>
           <li><span class="mark">✓</span><span><strong>Exercised beyond its own walls</strong> — the randomizer ran a mature, unrelated 1,983-test suite under three distinct seeds (all green) and the graph answered queries on its real index. The detectors run correctly on a codebase they didn't grow up with; that suite proved order-independent, so nothing pathological surfaced there.</span></li>
@@ -559,7 +642,6 @@ codex plugin add \
         <h3>Not yet</h3>
         <ul>
           <li><span class="mark">→</span><span><strong>An order-dependent failure caught in the wild</strong> — the randomizer catching real pollution is proven only by the pilot's deliberate demo; the one mature outside suite it has met so far was clean, so that catch hasn't happened on code no one planted it in.</span></li>
-          <li><span class="mark">→</span><span><strong>A live coding unit through the whole stack</strong> — the dev-rigor discipline now knows how to consume these detectors, but no real change has yet flowed through plan, build, and gate with the harness feeding it end to end.</span></li>
         </ul>
       </div>
     </div>
