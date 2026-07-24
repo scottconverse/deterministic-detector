@@ -82,6 +82,12 @@
   }
   .gh-btn:hover { border-color: var(--green-dim); background: var(--bg-raised); }
   @media (max-width: 900px) { nav.links a:not(.gh-btn) { display: none; } }
+  @media (max-width: 480px) {
+    header.nav .wrap { padding: 0 14px; }
+    .nav-inner { gap: 12px; }
+    .brand { font-size: 14px; }
+    .gh-btn { padding: 6px 11px; }
+  }
 
   /* ---------- hero ---------- */
   .hero { padding: 88px 0 72px; position: relative; overflow: hidden; }
@@ -182,7 +188,7 @@
   }
 
   /* component cards */
-  .cards { margin-top: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .cards { margin-top: 44px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
   @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
   .card {
     border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel);
@@ -325,7 +331,8 @@
     </div>
     <div class="hero-meta">
       <span>python · pytest · ruff</span>
-      <span>zero runtime dependencies</span>
+      <span>one repository · two agent hosts</span>
+      <span>stdlib-only edit hook</span>
       <span>externally audited design</span>
     </div>
 
@@ -394,20 +401,21 @@
         or Codex patch paths from the event payload, runs <code>ruff format --check</code> and <code>ruff check</code>,
         and feeds failures straight back to the agent. Exits silently for non-Python files,
         repos without ruff config, or missing ruff — it never breaks editing.</p>
-        <pre><span class="c-amber">"PostToolUse"</span>: [{
-  <span class="c-amber">"matcher"</span>: <span class="c-green">"Edit|Write|apply_patch"</span>,
-  <span class="c-amber">"hooks"</span>: [{ <span class="c-amber">"type"</span>: <span class="c-green">"command"</span>,
-    <span class="c-amber">"command"</span>: <span class="c-green">"python …/ruff_feedback.py"</span> }]
-}]</pre>
+        <pre><span class="c-amber">Claude</span>  Edit | Write | MultiEdit
+<span class="c-amber">Codex</span>   Edit | Write | apply_patch
+         <span class="c-green">↓ shared Python hook ↓</span>
+  ruff format --check
+  ruff check</pre>
       </div>
       <div class="card">
         <span class="chip">skill</span>
-        <h3>/install-detector</h3>
+        <h3>install-detector</h3>
         <p>Wires a target repo end to end: installs and pins <code>pytest-randomly</code> and
         <code>detect-test-pollution</code>, instantiates the CI jobs, and proves each step with
         verbatim evidence — no step reports PASS without its acceptance check having actually
         run. <code>smoke</code> mode re-verifies the hook on demand.</p>
-        <pre><span class="c-dim">$</span> <span class="c-ink">/install-detector</span>
+        <pre><span class="c-dim">Claude ›</span> <span class="c-ink">/install-detector</span>
+<span class="c-dim">Codex  ›</span> <span class="c-ink">$install-detector</span>
 <span class="c-green">recon</span>      env, tests, CI, ruff config
 <span class="c-green">randomize</span>  two runs, two seeds shown
 <span class="c-green">ci-jobs</span>    both informational at first
@@ -426,6 +434,17 @@
 <span class="c-amber">mutation-report</span>
   fetch-depth: 0      <span class="c-dim"># no vacuous pass</span>
   <span class="c-dim"># survivors → job summary, exit 0</span></pre>
+      </div>
+      <div class="card">
+        <span class="chip">MCP server</span>
+        <h3>Local code graph</h3>
+        <p>A pinned <code>code-review-graph</code> server runs through <code>uvx</code> and gives
+        either host structural queries for callers, dependencies, and affected tests. The graph
+        stays local in SQLite; the plugin does not upload repository code.</p>
+        <pre><span class="c-dim">$</span> uvx --from code-review-graph==2.3.7 \
+  code-review-graph serve
+
+<span class="c-green">✓</span> shared by Claude Code and Codex</pre>
       </div>
     </div>
   </div>
@@ -481,16 +500,19 @@
       <div class="step">
         <p class="n">01 · get the plugin</p>
         <h3>Install in Claude Code or Codex</h3>
-        <p>Claude Code loads the clone from its skills directory. Codex installs the same
-        repository through its bundled marketplace catalog.</p>
+        <p>Claude Code can load the repository directly. Codex installs the same repository
+        as a marketplace and plugin.</p>
         <pre>git clone https://github.com/scottconverse/deterministic-detector \
   ~/.claude/skills/deterministic-detector
 
 codex plugin marketplace add \
-  scottconverse/deterministic-detector</pre>
+  scottconverse/deterministic-detector
+codex plugin add \
+  deterministic-detector@deterministic-detector</pre>
         <p style="margin-top:12px; font-size:13.5px; color:var(--faint)">For one-off testing:
-        <code>claude --plugin-dir ./deterministic-detector</code>. In Codex, open the plugin
-        browser, install Deterministic Detector, review and trust its hook, then restart.</p>
+        <code>claude --plugin-dir ./deterministic-detector</code>. In the Codex desktop app,
+        you can instead install Deterministic Detector from the Plugins Directory. Review and
+        trust its Ruff hook, then start a new session.</p>
       </div>
       <div class="step">
         <p class="n">02 · wire a repo</p>
@@ -501,7 +523,8 @@ codex plugin marketplace add \
 <span class="c-dim">Codex  ›</span> $install-detector
 <span class="c-dim">either ›</span> run in smoke mode   <span class="c-dim"># after client updates</span></pre>
         <p style="margin-top:12px; font-size:13.5px; color:var(--faint)">Needs: a Python repo
-        with pytest, <code>ruff</code> on PATH for the hook, GitHub Actions for the CI jobs.</p>
+        with pytest, <code>ruff</code> on PATH for the hook, <code>uv</code> for the local graph,
+        and GitHub Actions for the CI jobs.</p>
       </div>
     </div>
     <p class="qs-note">Windows note: mutmut cannot run natively on Windows (upstream limitation,
@@ -526,7 +549,7 @@ codex plugin marketplace add \
         <ul>
           <li><span class="mark">✓</span><span><strong>Hook proven red-first and end-to-end</strong> — violations → exit 2 with findings on stderr; clean, non-Python, no-config, and malformed-payload cases exit silently; confirmed firing on real agent edits in a live session.</span></li>
           <li><span class="mark">✓</span><span><strong>Pilot completed on this very repository</strong> — installer acceptance, CI jobs on real PR SHAs, and the full weak-test demo: a green suite hid two surviving mutants, the job named them, strengthened tests killed 2/2. Burn-in: five green randomized runs across five distinct seeds.</span></li>
-          <li><span class="mark">✓</span><span><strong>Built against live schemas</strong> — the hooks payload, plugin manifest, and mutmut CLI were verified against current docs and a real local trial, not recalled from training data.</span></li>
+          <li><span class="mark">✓</span><span><strong>One repository, two proven hosts</strong> — Claude Code's original package contract remains covered, while fresh Codex sessions installed the plugin, loaded its shared skill and instructions, returned Ruff findings from a real <code>apply_patch</code>, and called the shared code-graph MCP server.</span></li>
           <li><span class="mark">✓</span><span><strong>Four silent-failure classes caught and closed</strong> by the project's own make-it-fail-first rule — two before first release, two more found by the pilot itself (including baselines that fail before any mutant is evaluated, which previously read as clean).</span></li>
           <li><span class="mark">✓</span><span><strong>Code-graph queries (v0.2.0)</strong> — an MCP-served graph (pinned, run via uvx, local SQLite index) answers callers and dependent tests as an enumerable set: validated 21/21 exact against grep ground truth, including a module-alias call that text matching misses. Run against a real, unrelated codebase at scale — a 66,963-edge index built in seconds — leaving that repository's working tree untouched.</span></li>
           <li><span class="mark">✓</span><span><strong>Exercised beyond its own walls</strong> — the randomizer ran a mature, unrelated 1,983-test suite under three distinct seeds (all green) and the graph answered queries on its real index. The detectors run correctly on a codebase they didn't grow up with; that suite proved order-independent, so nothing pathological surfaced there.</span></li>
