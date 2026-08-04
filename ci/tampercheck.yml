@@ -1,0 +1,59 @@
+# deterministic-detector CI template — tampercheck lane
+#
+# This is a TEMPLATE. It is not run in this repo. The `/install-detector`
+# skill copies it into a TARGET repo's .github/workflows/ during installation.
+#
+# ---------------------------------------------------------------------------
+# ENFORCEMENT STATUS — READ BEFORE TOUCHING BRANCH PROTECTION
+#
+# tampercheck: starts INFORMATIONAL, like every job this plugin installs.
+#   Unlike mutation-report it is DESIGNED to become a required status check:
+#   weakened verification (deleted/skipped/focused tests, `|| true`, hollowed
+#   assertions) is exactly the thing that must not merge silently, and the
+#   measured false-positive rate is ~1.4% of commits at the default
+#   threshold (see the tampercheck README). The owner flips it to required
+#   after an observation period on real PRs, using the same recipe as
+#   randomized-suite. The legitimate escape valve is the inline
+#   `tampercheck: allow <reason>` marker, which travels with the diff and is
+#   visible to reviewers — never an external ignore file.
+#
+# The tool is installed PINNED from PyPI, never from the working tree — so
+# an agent editing a local copy cannot change what CI enforces.
+#
+# Agents NEVER create, modify, or remove required-status-check / branch
+# protection settings, in either direction. That flip is owner-performed.
+# ---------------------------------------------------------------------------
+
+name: tampercheck
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tampercheck:
+    # Status-check context = this name; keep it plain so branch protection
+    # references "tampercheck" exactly.
+    name: tampercheck
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is MANDATORY. The diff against the base branch needs
+      # the base present locally; a shallow checkout makes the diff come up
+      # empty and this job would pass vacuously (the same vacuous-pass trap
+      # as the mutation-report lane).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Did this change weaken the project's own verification?
+        run: |
+          set -o pipefail
+          BASE="origin/${{ github.event.pull_request.base.ref || 'main' }}"
+          git fetch origin "${{ github.event.pull_request.base.ref || 'main' }}"
+          # Prove the diff is non-vacuous before judging it clean.
+          echo "### tampercheck scope vs $BASE" >> "$GITHUB_STEP_SUMMARY"
+          git diff --find-renames --stat "$BASE"...HEAD | tail -3 >> "$GITHUB_STEP_SUMMARY"
+          git diff --find-renames "$BASE"...HEAD \
+            | uvx tampercheck==0.1.0 | tee -a "$GITHUB_STEP_SUMMARY"

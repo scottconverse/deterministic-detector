@@ -1,6 +1,6 @@
 ---
 name: install-detector
-description: Install the deterministic-detector harness (pytest-randomly, detect-test-pollution, diff-scoped mutation CI, ruff hook smoke check) into the current repo. Use when the user invokes /install-detector in Claude Code, $install-detector in Codex, says "install the detector harness", or asks to set up deterministic detectors, randomized test order, or mutation testing CI. Also handles smoke mode after a supported client update.
+description: Install the deterministic-detector harness (pytest-randomly, detect-test-pollution, diff-scoped mutation CI, tampercheck verification-integrity CI, ruff hook smoke check) into the current repo. Use when the user invokes /install-detector in Claude Code, $install-detector in Codex, says "install the detector harness", or asks to set up deterministic detectors, randomized test order, or mutation testing CI. Also handles smoke mode after a supported client update.
 ---
 
 # install-detector
@@ -34,14 +34,17 @@ continue to the next item (do not silently skip, do not fake green).
    clean in the project's environment. This is an on-failure tool — do not
    run a full bisection during install.
 
-4. **CI detector jobs.** Instantiate `ci/detectors.yml` (from the plugin
-   repo) into the target repo's `.github/workflows/`, adapted to the repo's
-   dependency manager and test invocation from step 1. Both jobs start
-   **informational** — never touch branch protection. Acceptance: both jobs
-   run on a real PR SHA; the mutation job's summary shows it enumerated the
-   changed non-test `.py` files (non-vacuous — the fetch-depth: 0 trap from
-   plan D4). Then print the owner recipe below with the real repo name filled
-   in, and **stop**.
+4. **CI detector jobs.** Instantiate `ci/detectors.yml` AND `ci/tampercheck.yml`
+   (from the plugin repo) into the target repo's `.github/workflows/`, adapted
+   to the repo's dependency manager and test invocation from step 1. The
+   tampercheck template needs no language adaptation — it reads the PR diff
+   and is installed pinned from PyPI, never from the working tree. All jobs
+   start **informational** — never touch branch protection. Acceptance: the
+   jobs run on a real PR SHA; the mutation job's summary shows it enumerated
+   the changed non-test `.py` files, and the tampercheck job's summary shows
+   a non-empty diff stat (non-vacuous — the fetch-depth: 0 trap from plan
+   D4 applies to both). Then print the owner recipe below with the real repo
+   name filled in, and **stop**.
 
    ```
    Owner action required (never performed by an agent):
@@ -58,6 +61,12 @@ continue to the next item (do not silently skip, do not fake green).
 
    mutation-report stays permanently informational unless you separately
    record a deliberate promotion decision.
+
+   tampercheck is DESIGNED to become required (weakened verification must
+   not merge silently; measured FP rate ~1.4% of commits). After an
+   observation period on real PRs, add "tampercheck" the same way as
+   "randomized-suite". Findings are justified in-diff with a
+   `tampercheck: allow <reason>` marker, never an ignore file.
    ```
 
 5. **Code-graph index.** First, pre-warm the uvx cache:
