@@ -56,4 +56,4 @@ jobs:
           echo "### tampercheck scope vs $BASE" >> "$GITHUB_STEP_SUMMARY"
           git diff --find-renames --stat "$BASE"...HEAD | tail -3 >> "$GITHUB_STEP_SUMMARY"
           git diff --find-renames "$BASE"...HEAD \
-            | uvx tampercheck==0.1.0 | tee -a "$GITHUB_STEP_SUMMARY"
+            | uvx tampercheck==0.1.1 | tee -a "$GITHUB_STEP_SUMMARY"
