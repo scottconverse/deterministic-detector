@@ -18,9 +18,12 @@ order they happen to be written in."
   applies a patch to one, then feeds ruff's format/lint output back to the
   agent in the same turn, if the repo has ruff configured.
 - An **`install-detector` skill** that wires the repo-side pieces into a
-  target repo: `pytest-randomly`, `detect-test-pollution`, and two GitHub
-  Actions jobs (a randomized-order test run, and a diff-scoped mutation
-  report).
+  target repo: `pytest-randomly`, `detect-test-pollution`, and three GitHub
+  Actions jobs (a randomized-order test run, a diff-scoped mutation report,
+  and a [tampercheck](https://github.com/scottconverse/tampercheck) lane
+  that reads each PR's diff and fails if the change weakened the project's
+  own verification — deleted/skipped/focused tests, `|| true`, hollowed
+  assertions, swallowed errors).
 - A **code-graph MCP server** (code-review-graph, pinned, run via `uvx` —
   nothing to install) answering "who calls this function, and which tests
   depend on it" from a local SQLite index the installer builds per repo.
@@ -45,9 +48,12 @@ order they happen to be written in."
 
 Anything that can genuinely fail a build lives in CI, on a machine no agent
 controls — not in the agent's own session, where an agent could talk itself
-out of a check. Even there, only the randomized-order job is ever a required
-status check, and only after the repo owner manually flips it once the suite
-has proven itself clean across several different random orders (burn-in).
+out of a check. Even there, only two jobs are ever candidates for required
+status checks — randomized-suite (after burn-in across several random
+orders) and tampercheck (after an observation period on real PRs; it is
+installed pinned from PyPI so a locally edited copy cannot change what CI
+enforces) — and both flips are performed manually by the repo owner, never
+by an agent.
 No agent ever touches branch-protection or required-status-check settings,
 in either direction — that's an owner-only action, always.
 
