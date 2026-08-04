@@ -64,6 +64,16 @@ in either direction — that's an owner-only action, always.
 - [`uv`](https://docs.astral.sh/uv/) for the pinned code-graph MCP server
 - GitHub Actions for the two CI detector jobs
 
+## Install as part of the set
+
+This plugin operates alone, or installs together with
+[dev-rigor-stack-lite](https://github.com/scottconverse/dev-rigor-stack-lite)
+(the discipline layer) and
+[tampercheck](https://github.com/scottconverse/tampercheck) (the tamper alarm
+whose CI lane this plugin wires per repo) via one pinned command:
+[rigor-suite](https://github.com/scottconverse/rigor-suite). The layers stay
+independent — installed together, never mixed.
+
 ## Install for Claude Code
 
 Clone the plugin into Claude's skills directory, then start a new session:

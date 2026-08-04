@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>deterministic-detector — checks your coding agent can't talk its way past</title>
-<meta name="description" content="A Claude Code and Codex plugin that pairs same-turn ruff feedback with CI-side test-order randomization and advisory mutation reporting. Enforcement lives outside the agent's session, on machines the agent doesn't control.">
+<meta name="description" content="A Claude Code and Codex plugin that pairs same-turn ruff feedback with CI-side test-order randomization, advisory mutation reporting, and a tampercheck verification-integrity gate. Enforcement lives outside the agent's session, on machines the agent doesn't control.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C1210'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23F87171'/%3E%3Ccircle cx='21' cy='16' r='5' fill='%234ADE80'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -410,6 +410,7 @@
         <ul>
           <li><span class="mark" style="color:var(--green)">✓</span><span><strong>randomized-suite</strong> runs the full test suite in random order on every PR, seed preserved in the log for exact reproduction. Order-dependent failures are real bugs, surfaced instead of hidden.</span></li>
           <li><span class="mark" style="color:var(--green)">✓</span><span><strong>mutation-report</strong> mutates only the non-test Python files changed against the base branch and lists every surviving mutant in the job summary — a weak test can't hide behind a green run.</span></li>
+          <li><span class="mark" style="color:var(--green)">✓</span><span><strong>tampercheck</strong> (since 0.4.0) reads each PR's diff and fails if the change weakened verification itself — deleted, skipped, or focused tests, <code>|| true</code>, hollowed assertions. Installed pinned from PyPI, so a locally edited copy can't change what CI enforces.</span></li>
         </ul>
       </div>
     </div>
@@ -460,9 +461,14 @@
 
     <div class="rigor-actions">
       <a class="btn primary" href="https://github.com/scottconverse/dev-rigor-stack-lite#install">Install Dev Rigor Stack Lite</a>
+      <a class="btn" href="https://scottconverse.github.io/rigor-suite/" style="margin-left:10px">Install the whole set — rigor-suite</a>
       <p class="rigor-note">Portable Agent Skills bundle for Codex, Claude Code, Antigravity,
       and compatible hosts. The stack still works without this detector; when both are installed,
-      it consumes the detector evidence proportionally.</p>
+      it consumes the detector evidence proportionally. Everything here also operates alone —
+      or installs together, pinned and never mixed, as layer&nbsp;3 of
+      <a href="https://scottconverse.github.io/rigor-suite/">rigor-suite</a> alongside
+      <a href="https://scottconverse.github.io/tampercheck/">tampercheck</a>, whose CI lane this
+      plugin wires per repo.</p>
     </div>
   </div>
 </section>
@@ -505,17 +511,20 @@
 <span class="c-amber">owner</span>      branch-protection recipe → you</pre>
       </div>
       <div class="card">
-        <span class="chip">ci template</span>
-        <h3>Two detector jobs</h3>
-        <p>A GitHub Actions template the installer adapts per repo. Diff-scoping fetches full
-        history so the mutation job can never pass vacuously on an empty diff — and it refuses
+        <span class="chip">ci templates</span>
+        <h3>Three CI lanes</h3>
+        <p>GitHub Actions templates the installer adapts per repo. Diff-scoping fetches full
+        history so neither diff-driven job can pass vacuously on an empty diff — they refuse
         loudly rather than silently producing no data. mutmut runs on Linux runners, where it
         actually works.</p>
         <pre><span class="c-amber">randomized-suite</span>
   pytest -p randomly  <span class="c-dim"># seed kept in log</span>
 <span class="c-amber">mutation-report</span>
   fetch-depth: 0      <span class="c-dim"># no vacuous pass</span>
-  <span class="c-dim"># survivors → job summary, exit 0</span></pre>
+  <span class="c-dim"># survivors → job summary, exit 0</span>
+<span class="c-amber">tampercheck</span>
+  git diff | uvx tampercheck==0.1.1
+  <span class="c-dim"># weakened verification → exit 1</span></pre>
       </div>
       <div class="card">
         <span class="chip">MCP server</span>
@@ -619,7 +628,7 @@ codex plugin add \
   <div class="wrap">
     <p class="eyebrow">Project status</p>
     <h2>Early-stage, self-hosted, and says so.</h2>
-    <p class="lede">v0.3.0, packaged for Claude Code and Codex from one repository. The design went
+    <p class="lede">v0.4.0, packaged for Claude Code and Codex from one repository. The design went
     through two external audit rounds before any code was written, the harness was piloted on
     its own repository — this repo runs its own detectors on every pull request — and its
     detectors have now been exercised against a real, mature codebase they didn't grow up with.
@@ -636,6 +645,7 @@ codex plugin add \
           <li><span class="mark">✓</span><span><strong>Four silent-failure classes caught and closed</strong> by the project's own make-it-fail-first rule — two before first release, two more found by the pilot itself (including baselines that fail before any mutant is evaluated, which previously read as clean).</span></li>
           <li><span class="mark">✓</span><span><strong>Code-graph queries (v0.2.0)</strong> — an MCP-served graph (pinned, run via uvx, local SQLite index) answers callers and dependent tests as an enumerable set: validated 21/21 exact against grep ground truth, including a module-alias call that text matching misses. Run against a real, unrelated codebase at scale — a 66,963-edge index built in seconds — leaving that repository's working tree untouched.</span></li>
           <li><span class="mark">✓</span><span><strong>Exercised beyond its own walls</strong> — the randomizer ran a mature, unrelated 1,983-test suite under three distinct seeds (all green) and the graph answered queries on its real index. The detectors run correctly on a codebase they didn't grow up with; that suite proved order-independent, so nothing pathological surfaced there.</span></li>
+          <li><span class="mark">✓</span><span><strong>tampercheck lane (0.4.0), dogfooded here</strong> — this repository's own pull requests now run the <a href="https://scottconverse.github.io/tampercheck/">tampercheck</a> verification-integrity gate, pinned from PyPI. The tool carries its own evidence: paired flag/clean fixtures with CI mutation proofs, and a false-positive rate measured on 1,331 real commits.</span></li>
         </ul>
       </div>
       <div class="status-col next">
